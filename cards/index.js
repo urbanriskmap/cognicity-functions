@@ -66,10 +66,10 @@ const uploadImage = (cardId, contentType, base64Image) => {
 // Update card record with details of the image
 const updateCardImage = (cardId, contentType) => new Promise((resolve, reject) => {
   console.log('Patching card record with image_url');
-  let patch = JSON.stringify({
+  let payload = JSON.stringify({
     image_url: [cardId, (contentType ? contentType.split('/')[1] : 'png')].join('.')
   });
-  console.log(patch);
+  console.log(payload);
   let options = {
     hostname: COGNICITY_URL.replace('https://',''),
     port: 443,
@@ -77,7 +77,7 @@ const updateCardImage = (cardId, contentType) => new Promise((resolve, reject) =
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(post_data)
+      'Content-Length': Buffer.byteLength(payload)
     }
   };
   console.log(options);
@@ -92,7 +92,7 @@ const updateCardImage = (cardId, contentType) => new Promise((resolve, reject) =
     reject(err);
     return;
   });
-  req.end(patch);
+  req.end(payload);
 });
 
 // Handle upload of an image for a given card, if exists add to S3 and update card record
