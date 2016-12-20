@@ -3,7 +3,6 @@
 console.log('Loading function');
 
 const https = require('https');
-const querystring = require('querystring');
 const AWS = require('aws-sdk');
 const s3 = new AWS.S3( { params: { Bucket: process.env.CARD_IMAGE_BUCKET } } );
 
@@ -62,7 +61,7 @@ const uploadImage = (cardId, contentType, base64Image) => {
 // Update card record with details of the image
 const updateCardImage = (cardId, contentType) => new Promise((resolve, reject) => {
   console.log('Patching card record with image_url');
-  let patch = querystring.stringify({
+  let patch = JSON.stringify({
     image_url: [cardId, (contentType ? contentType.split('/')[1] : 'png')].join('.')
   });
   console.log(patch);
@@ -72,7 +71,7 @@ const updateCardImage = (cardId, contentType) => new Promise((resolve, reject) =
     path: `/cards/${cardId}`,
     method: 'PATCH',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(post_data)
     }
   };
@@ -88,8 +87,7 @@ const updateCardImage = (cardId, contentType) => new Promise((resolve, reject) =
     reject(err);
     return;
   });
-  req.write(patch);
-  req.end();
+  req.end(patch);
 });
 
 // Handle upload of an image for a given card, if exists add to S3 and update card record
@@ -109,30 +107,37 @@ exports.handler = (event, context, callback) => {
   if (!event.cardId) return done({ message: 'cardId is required' }, 400);
   if (!event.base64Image) return done({ message: 'base64Image is required' }, 400);
 
-  // We have the parameters we need, lets proceed
-  try {
-    // Check the card exists
-    retrieveCard(event.cardId).then((card) => {
-      if (!card) return done({message: `No card exists with cardId '${event.cardId}'`}, 404);
-      if (card.report && card.report.image_url) return done({message: `This card already has an image '${event.cardId}'`}, 409);
+  // Check the card exists
+  retrieveCard(event.cardId).then((card) => {
+    if (!card) return done({message: `No card exists with cardId '${event.cardId}'`}, 404);
+    if (card.report && card.report.image_url) return done({message: `This card already has an image '${event.cardId}'`}, 409);
 
-      // Card exists and does not have an image so let's try and upload the image to S3
-      uploadImage(event.cardId, event.contentType, event.base64Image).then((res) => {
-        console.log('Image upload successfully');
+    // Card exists and does not have an image so let's try and upload the image to S3
+    uploadImage(event.cardId, event.contentType, event.base64Image).then((res) => {
+      console.log('Image upload successfully');
 
-        // Finally, update the card with the image details
-        updateCardImage(event.cardId, event.contentType).then((updated) => {
-          console.log('Updated card with image details');
-          // Return a success
-          if (updated) return done(null, 200, { cardId: event.cardId, updated: true });
-          // Return an error giving details, we have an inconsistent state
-          // TODO: Perhaps in the future we should back out the image if this happens?
-          else return done({message: `An image was uploaded but the card record could not be updated for cardId '${event.cardId}'`}, 409);
-        });
+      // Finally, update the card with the image details
+      updateCardImage(event.cardId, event.contentType).then((updated) => {
+        console.log('Updated card with image details');
+        // Return a success
+        if (updated) return done(null, 200, { cardId: event.cardId, updated: true });
+        // Return an error giving details, we have an inconsistent state
+        // TODO: Perhaps in the future we should back out the image if this happens?
+        else return done({message: `An image was uploaded but the card record could not be updated for cardId '${event.cardId}'`}, 409);
+
+      }).catch((err) => {
+        console.log('An error occured updating the card image, ' + err);
+        return done(err, 500);
       });
-    })
-  } catch (err) {
-    // console.log('An error occured, ' + err);
+
+    }).catch((err) => {
+      console.log('An error occured saving the image to S3, ' + err);
+      return done(err, 500);
+    });
+
+  }).catch((err) => {
+    console.log('An error occured retrieving the card, ' + err);
     return done(err, 500);
-  }
+  });
+
 };
