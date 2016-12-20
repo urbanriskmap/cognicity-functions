@@ -2,14 +2,19 @@
 
 console.log('Loading function');
 
+// Read constants from environment variables
+const COGNICITY_URL = process.env.COGNICITY_URL;
+const CARD_IMAGE_BUCKET = process.env.CARD_IMAGE_BUCKET;
+// TODO: Throw an error if not defined
+
 const https = require('https');
 const AWS = require('aws-sdk');
-const s3 = new AWS.S3( { params: { Bucket: process.env.CARD_IMAGE_BUCKET } } );
+const s3 = new AWS.S3( { params: { Bucket: CARD_IMAGE_BUCKET } } );
 
 // Check if the card exists
 const retrieveCard = (cardId) => new Promise((resolve, reject) => {
   // Make a call to the URL to ensure that the card exists
-  let url = [process.env.COGNICITY_URL,'cards',cardId].join('/');
+  let url = [COGNICITY_URL,'cards',cardId].join('/');
   console.log(url);
   https.get(url, (res) => {
     // If status is 404 then no card so return null
