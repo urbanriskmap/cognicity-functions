@@ -61,10 +61,12 @@ const uploadImage = (cardId, contentType, base64Image) => {
 
 // Update card record with details of the image
 const updateCardImage = (cardId, contentType) => new Promise((resolve, reject) => {
+  console.log('Patching card record with image_url');
   let patch = querystring.stringify({
     image_url: [cardId, (contentType ? contentType.split('/')[1] : 'png')].join('.')
   });
-  let req = https.request({
+  console.log(patch);
+  let options = {
     hostname: COGNICITY_URL.replace('https://',''),
     port: 443,
     path: `/cards/${cardId}`,
@@ -73,12 +75,16 @@ const updateCardImage = (cardId, contentType) => new Promise((resolve, reject) =
       'Content-Type': 'application/x-www-form-urlencoded',
       'Content-Length': Buffer.byteLength(post_data)
     }
-  }, (res) => {
+  };
+  console.log(options);
+  let req = https.request(options, (res) => {
     // If image was successfully patched return true else return false
+    console.log(res.statusCode);
     resolve(res.statusCode === 200);
     return;
   });
-  req.on('error', (e) => {
+  req.on('error', (err) => {
+    console.log(err);
     reject(err);
     return;
   });
@@ -116,6 +122,7 @@ exports.handler = (event, context, callback) => {
 
         // Finally, update the card with the image details
         updateCardImage(event.cardId, event.contentType).then((updated) => {
+          console.log('Updated card with image details');
           // Return a success
           if (updated) return done(null, 200, { cardId: event.cardId, updated: true });
           // Return an error giving details, we have an inconsistent state
