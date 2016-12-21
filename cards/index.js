@@ -51,7 +51,7 @@ const retrieveCard = (cardId) => new Promise((resolve, reject) => {
 });
 
 // Upload the image to S3
-const uploadImage = (filename, base64Image) => {
+const uploadImage = (filename, contentType, base64Image) => {
   // Setup the S3 payload
   const params = {
     Key: filename,
@@ -121,7 +121,7 @@ exports.handler = (event, context, callback) => {
     let filename = event.cardId + (event.contentType === 'image/gif' ? '.gif' : 'jpg');
 
     // Card exists and does not have an image so let's try and upload the image to S3
-    uploadImage(event.cardId, filename, event.base64Image).then((res) => {
+    uploadImage(filename, event.contentType, event.base64Image).then((res) => {
       console.log('Image upload successfully');
 
       // Finally, update the card with the image details
