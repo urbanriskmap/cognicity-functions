@@ -121,8 +121,8 @@ exports.handler = (event, context, callback) => {
     if (!card) return done({message: `No card exists with cardId '${event.cardId}'`}, 404);
     if (card.report && card.report.image_url) return done({message: `This card already has an image '${event.cardId}'`}, 409);
 
-    // Create filename from cardId and .gif if image/gif else .jpg for image/jpeg or image/png
-    let filename = event.cardId + (event.contentType === 'image/gif' ? '.gif' : '.jpg');
+    // Create filename from cardId .jpg (all file types converted to jpg by ImageMagick)
+    let filename = `${event.cardId}.jpg`;
 
     // Card exists and does not have an image so let's try and upload the image to S3
     uploadImage(filename, event.contentType, event.base64Image).then((res) => {
