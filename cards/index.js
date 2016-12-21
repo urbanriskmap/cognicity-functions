@@ -34,7 +34,9 @@ const retrieveCard = (cardId) => new Promise((resolve, reject) => {
     res.on('end', () => {
       try {
         // Return the parsed card
-        resolve(JSON.parse(body));
+        let resp = JSON.parse(body);
+        if (resp && resp.result) resolve(resp.result);
+        else reject(new Error('No result found for card: ' + resp));
       } catch(e) {
         // OR reject with an error if the JSON could not be parsed
         console.log('malformed request', body);
