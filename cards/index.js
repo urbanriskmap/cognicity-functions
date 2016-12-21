@@ -5,7 +5,6 @@ console.log('Loading function');
 // Read constants from environment variables
 const COGNICITY_URL = process.env.COGNICITY_URL;
 const CARD_IMAGE_BUCKET = process.env.CARD_IMAGE_BUCKET;
-// TODO: Throw an error if not defined
 
 const https = require('https');
 const AWS = require('aws-sdk');
@@ -52,10 +51,10 @@ const retrieveCard = (cardId) => new Promise((resolve, reject) => {
 });
 
 // Upload the image to S3
-const uploadImage = (cardId, contentType, base64Image) => {
+const uploadImage = (filename, base64Image) => {
   // Setup the S3 payload
   const params = {
-    Key: [cardId, (contentType ? contentType.split('/')[1] : 'png')].join('.'),
+    Key: filename,
     Body: new Buffer(base64Image,'base64'),
     ContentEncoding: 'base64',
     ContentType: contentType || 'image/png'
@@ -64,10 +63,10 @@ const uploadImage = (cardId, contentType, base64Image) => {
 }
 
 // Update card record with details of the image
-const updateCardImage = (cardId, contentType) => new Promise((resolve, reject) => {
+const updateCardImage = (cardId, filename) => new Promise((resolve, reject) => {
   console.log('Patching card record with image_url');
   let payload = JSON.stringify({
-    image_url: [cardId, (contentType ? contentType.split('/')[1] : 'png')].join('.')
+    image_url: filename
   });
   console.log(payload);
   let options = {
@@ -109,6 +108,7 @@ exports.handler = (event, context, callback) => {
   });
 
   // Check the required parameters
+  if (!COGNICITY_URL || !CARD_IMAGE_BUCKET) return done({ message: 'Missing required environment variables' }, 500);
   if (!event.cardId) return done({ message: 'cardId is required' }, 400);
   if (!event.base64Image) return done({ message: 'base64Image is required' }, 400);
 
@@ -117,12 +117,15 @@ exports.handler = (event, context, callback) => {
     if (!card) return done({message: `No card exists with cardId '${event.cardId}'`}, 404);
     if (card.report && card.report.image_url) return done({message: `This card already has an image '${event.cardId}'`}, 409);
 
+    // Create filename from cardId and .gif if image/gif else .jpg for image/jpeg or image/png
+    let filename = event.cardId + (event.contentType === 'image/gif' ? '.gif' : 'jpg');
+
     // Card exists and does not have an image so let's try and upload the image to S3
-    uploadImage(event.cardId, event.contentType, event.base64Image).then((res) => {
+    uploadImage(event.cardId, filename, event.base64Image).then((res) => {
       console.log('Image upload successfully');
 
       // Finally, update the card with the image details
-      updateCardImage(event.cardId, event.contentType).then((updated) => {
+      updateCardImage(event.cardId, filename).then((updated) => {
         console.log('Updated card with image details');
         // Return a success
         if (updated) return done(null, 200, { cardId: event.cardId, updated: true });
