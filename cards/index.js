@@ -114,6 +114,8 @@ exports.handler = (event, context, callback) => {
 
   // Check the card exists
   retrieveCard(event.cardId).then((card) => {
+    console.log('Retrieved card')
+    console.log(JSON.stringify(card))
     if (!card) return done({message: `No card exists with cardId '${event.cardId}'`}, 404);
     if (card.report && card.report.image_url) return done({message: `This card already has an image '${event.cardId}'`}, 409);
 
