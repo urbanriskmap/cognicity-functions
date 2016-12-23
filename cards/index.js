@@ -9,6 +9,7 @@ const CARD_IMAGE_BUCKET = process.env.CARD_IMAGE_BUCKET;
 const https = require('https');
 const AWS = require('aws-sdk');
 const s3 = new AWS.S3( { params: { Bucket: CARD_IMAGE_BUCKET } } );
+const s3handler = require('./s3handler');
 
 // Check if the card exists
 const retrieveCard = (cardId) => new Promise((resolve, reject) => {
@@ -112,7 +113,7 @@ exports.handler = (event, context, callback) => {
   // Check the required parameters
   if (!COGNICITY_URL || !CARD_IMAGE_BUCKET) return done({ message: 'Missing required environment variables' }, 500);
   if (!event.cardId) return done({ message: 'cardId is required' }, 400);
-  if (!event.base64Image) return done({ message: 'base64Image is required' }, 400);
+
 
   // Check the card exists
   retrieveCard(event.cardId).then((card) => {
